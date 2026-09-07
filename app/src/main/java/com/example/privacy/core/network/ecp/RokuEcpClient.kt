@@ -15,7 +15,9 @@ data class RokuDeviceInfo(
     val modelName: String,
     val modelNumber: String,
     val isTv: Boolean,
-    val softwareVersion: String
+    val softwareVersion: String,
+    val serialNumber: String = "",
+    val udn: String = ""
 )
 
 class RokuEcpClient(
@@ -51,6 +53,8 @@ class RokuEcpClient(
             val modelNumber = getTagValue("model-number")
             val isTvStr = getTagValue("is-tv")
             val softwareVersion = getTagValue("software-version")
+            val serialNumber = getTagValue("serial-number")
+            val udn = getTagValue("udn")
 
             val isTv = isTvStr.equals("true", ignoreCase = true)
             val finalName = userDeviceName.ifBlank { friendlyDeviceName.ifBlank { "Roku Device" } }
@@ -60,7 +64,9 @@ class RokuEcpClient(
                 modelName = modelName,
                 modelNumber = modelNumber,
                 isTv = isTv,
-                softwareVersion = softwareVersion
+                softwareVersion = softwareVersion,
+                serialNumber = serialNumber,
+                udn = udn
             )
         }
     }
