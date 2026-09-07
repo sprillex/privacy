@@ -19,12 +19,17 @@ class RokuPrivacyNavigator(
         val macroName = "Limit Ad Tracking Macro"
         val steps = listOf(
             "Sending Home key" to "Home",
-            "Focusing side menu (Left)" to "Left",
-            "Opening Settings (Up)" to "Up",
-            "Selecting Settings" to "Select",
-            "Scrolling to Privacy" to "Down",
+            "Focusing side menu" to "Left",
+            "Navigating to Settings" to "Up",
+            "Entering Settings" to "Right",
+            "Navigating to Privacy" to "Up",
+            "Scrolling to Privacy section" to "Up",
             "Entering Privacy" to "Right",
-            "Entering Advertising" to "Right"
+            "Entering Advertising" to "Right",
+            "Navigating to option" to "Down",
+            "Selecting option" to "Down",
+            "Toggling Advertising Personalization" to "Select",
+            "Confirming selection" to "Select"
         )
         val totalSteps = steps.size
 
