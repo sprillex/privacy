@@ -9,6 +9,7 @@ import com.example.privacy.core.database.RokuDeviceEntity
 import com.example.privacy.core.database.RokuDeviceWithChecks
 import com.example.privacy.core.network.discovery.DiscoveredDevice
 import com.example.privacy.core.network.discovery.NetworkUtils
+import com.example.privacy.core.network.discovery.RokuMdnsScanner
 import com.example.privacy.core.network.discovery.RokuSsdpScanner
 import com.example.privacy.core.network.discovery.RokuSubnetScanner
 import com.example.privacy.core.network.ecp.RokuEcpClient
@@ -31,6 +32,7 @@ class DiscoveryViewModel(
     application: Application,
     private val scanner: RokuSsdpScanner = RokuSsdpScanner(application),
     private val subnetScanner: RokuSubnetScanner = RokuSubnetScanner(),
+    private val mdnsScanner: RokuMdnsScanner = RokuMdnsScanner(application),
     private val ecpClient: RokuEcpClient = RokuEcpClient()
 ) : AndroidViewModel(application) {
     private val database = RokuDatabase.getDatabase(application)
@@ -73,24 +75,34 @@ class DiscoveryViewModel(
 
         viewModelScope.launch {
             try {
-                coroutineScope {
-                    launch {
-                        try {
-                            scanner.startDiscovery().collect { discovered ->
-                                handleDiscoveredDevice(discovered, processedSet)
-                            }
-                        } catch (_: Exception) {}
-                    }
-
-                    val localIp = NetworkUtils.getLocalWifiIpAddress(getApplication())
-                    val prefix = localIp?.let { NetworkUtils.getSubnetPrefix(it) }
-                    if (!prefix.isNullOrBlank()) {
+                kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+                    coroutineScope {
                         launch {
                             try {
-                                subnetScanner.scanSubnet(prefix).collect { discovered ->
+                                scanner.startDiscovery().collect { discovered ->
                                     handleDiscoveredDevice(discovered, processedSet)
                                 }
                             } catch (_: Exception) {}
+                        }
+
+                        launch {
+                            try {
+                                mdnsScanner.startDiscovery().collect { discovered ->
+                                    handleDiscoveredDevice(discovered, processedSet)
+                                }
+                            } catch (_: Exception) {}
+                        }
+
+                        val localIp = NetworkUtils.getLocalWifiIpAddress(getApplication())
+                        val prefix = localIp?.let { NetworkUtils.getSubnetPrefix(it) }
+                        if (!prefix.isNullOrBlank()) {
+                            launch {
+                                try {
+                                    subnetScanner.scanSubnet(prefix).collect { discovered ->
+                                        handleDiscoveredDevice(discovered, processedSet)
+                                    }
+                                } catch (_: Exception) {}
+                            }
                         }
                     }
                 }
