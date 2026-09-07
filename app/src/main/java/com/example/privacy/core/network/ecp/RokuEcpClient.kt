@@ -1,5 +1,7 @@
 package com.example.privacy.core.network.ecp
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -63,8 +65,8 @@ class RokuEcpClient(
         }
     }
 
-    suspend fun getDeviceInfo(ipAddress: String, port: Int = 8060): Result<RokuDeviceInfo> {
-        return runCatching {
+    suspend fun getDeviceInfo(ipAddress: String, port: Int = 8060): Result<RokuDeviceInfo> = withContext(Dispatchers.IO) {
+        runCatching {
             val url = "http://$ipAddress:$port/query/device-info"
             val request = Request.Builder().url(url).get().build()
             okHttpClient.newCall(request).execute().use { response ->
@@ -77,8 +79,8 @@ class RokuEcpClient(
         }
     }
 
-    suspend fun sendKey(ipAddress: String, key: String, port: Int = 8060): Result<Boolean> {
-        return runCatching {
+    suspend fun sendKey(ipAddress: String, key: String, port: Int = 8060): Result<Boolean> = withContext(Dispatchers.IO) {
+        runCatching {
             val url = "http://$ipAddress:$port/keypress/$key"
             val request = Request.Builder()
                 .url(url)

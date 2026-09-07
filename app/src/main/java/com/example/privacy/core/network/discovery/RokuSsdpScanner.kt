@@ -3,8 +3,10 @@ package com.example.privacy.core.network.discovery
 import android.content.Context
 import android.net.wifi.WifiManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -13,7 +15,7 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.MulticastSocket
+import java.net.NetworkInterface
 
 data class DiscoveredDevice(
     val usn: String,
@@ -29,9 +31,8 @@ class RokuSsdpScanner(
     companion object {
         const val SSDP_MULTICAST_ADDRESS = "239.255.255.250"
         const val SSDP_PORT = 1900
-        const val MSEARCH_ST = "roku:ecp"
 
-        const val MSEARCH_REQUEST =
+        const val MSEARCH_ROKU_ST =
             "M-SEARCH * HTTP/1.1\r\n" +
                     "HOST: 239.255.255.250:1900\r\n" +
                     "MAN: \"ssdp:discover\"\r\n" +
@@ -39,10 +40,19 @@ class RokuSsdpScanner(
                     "ST: roku:ecp\r\n" +
                     "\r\n"
 
+        const val MSEARCH_ALL_ST =
+            "M-SEARCH * HTTP/1.1\r\n" +
+                    "HOST: 239.255.255.250:1900\r\n" +
+                    "MAN: \"ssdp:discover\"\r\n" +
+                    "MX: 3\r\n" +
+                    "ST: ssdp:all\r\n" +
+                    "\r\n"
+
         fun parseSsdpResponse(response: String): DiscoveredDevice? {
             val lines = response.lines()
             var location: String? = null
             var usn: String? = null
+            var isRoku = false
 
             for (line in lines) {
                 val trimmed = line.trim()
@@ -54,26 +64,38 @@ class RokuSsdpScanner(
                     lowerCaseLine.startsWith("usn:") -> {
                         usn = trimmed.substring("usn:".length).trim()
                     }
+                    lowerCaseLine.startsWith("st:") -> {
+                        val st = trimmed.substring("st:".length).trim()
+                        if (st.lowercase().contains("roku")) {
+                            isRoku = true
+                        }
+                    }
+                    lowerCaseLine.contains("roku") -> {
+                        isRoku = true
+                    }
                 }
             }
 
             if (location == null) return null
 
-            // Parse IP and port from LOCATION header (e.g. http://192.168.1.120:8060/)
-            val cleanLocation = location.trim()
             val uri = try {
-                java.net.URI(cleanLocation)
+                java.net.URI(location.trim())
             } catch (e: Exception) {
                 return null
             }
 
             val ipAddress = uri.host ?: return null
             val port = if (uri.port != -1) uri.port else 8060
+
+            // If USN or location indicates Roku, or ST indicates Roku
             val effectiveUsn = usn ?: "usn:$ipAddress"
+            if (!isRoku && !effectiveUsn.lowercase().contains("roku") && !location.lowercase().contains("8060")) {
+                return null
+            }
 
             return DiscoveredDevice(
                 usn = effectiveUsn,
-                location = cleanLocation,
+                location = location.trim(),
                 ipAddress = ipAddress,
                 port = port
             )
@@ -99,11 +121,15 @@ class RokuSsdpScanner(
             socket = socketImpl
 
             val ssdpGroup = InetAddress.getByName(SSDP_MULTICAST_ADDRESS)
-            val requestBytes = MSEARCH_REQUEST.toByteArray(Charsets.UTF_8)
-            val sendPacket = DatagramPacket(requestBytes, requestBytes.size, ssdpGroup, SSDP_PORT)
+            val packetRoku = MSEARCH_ROKU_ST.toByteArray(Charsets.UTF_8)
+            val packetAll = MSEARCH_ALL_ST.toByteArray(Charsets.UTF_8)
 
-            // Send initial probe
-            socketImpl.send(sendPacket)
+            val sendPacketRoku = DatagramPacket(packetRoku, packetRoku.size, ssdpGroup, SSDP_PORT)
+            val sendPacketAll = DatagramPacket(packetAll, packetAll.size, ssdpGroup, SSDP_PORT)
+
+            // Send initial probes
+            socketImpl.send(sendPacketRoku)
+            socketImpl.send(sendPacketAll)
 
             val startTime = System.currentTimeMillis()
             val buffer = ByteArray(2048)
@@ -119,14 +145,13 @@ class RokuSsdpScanner(
                         emit(device)
                     }
                 } catch (e: java.net.SocketTimeoutException) {
-                    // Send periodic re-probe if still within scan window
                     if ((System.currentTimeMillis() - startTime) < scanTimeoutMs) {
                         try {
-                            socketImpl.send(sendPacket)
+                            socketImpl.send(sendPacketRoku)
+                            socketImpl.send(sendPacketAll)
                         } catch (_: Exception) {}
                     }
                 } catch (e: Exception) {
-                    // Socket closed or error
                     break
                 }
             }

@@ -32,7 +32,6 @@ class DiscoveryViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         observeSavedDevices()
-        startScan()
     }
 
     private fun observeSavedDevices() {
@@ -50,7 +49,7 @@ class DiscoveryViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             try {
                 scanner.startDiscovery().collect { discovered ->
-                    // Query ECP device info
+                    // Query ECP device info (now main-safe with Dispatchers.IO)
                     val infoResult = ecpClient.getDeviceInfo(discovered.ipAddress, discovered.port)
                     if (infoResult.isSuccess) {
                         val info = infoResult.getOrThrow()
