@@ -28,7 +28,7 @@ data class DiscoveryUiState(
     val isWifiConnected: Boolean = true
 )
 
-class DiscoveryViewModel(
+class DiscoveryViewModel @JvmOverloads constructor(
     application: Application,
     private val scanner: RokuSsdpScanner = RokuSsdpScanner(application),
     private val subnetScanner: RokuSubnetScanner = RokuSubnetScanner(),
