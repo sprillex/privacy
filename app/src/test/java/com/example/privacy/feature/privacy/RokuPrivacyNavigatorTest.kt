@@ -27,7 +27,7 @@ class RokuPrivacyNavigatorTest {
     @Test
     fun executeAdTrackingMacro_networkFailure_emitsErrorStateAndAborts() = runTest {
         coEvery { mockEcpClient.sendKey("192.168.1.100", "Home", any()) } returns Result.success(true)
-        coEvery { mockEcpClient.sendKey("192.168.1.100", "Up", any()) } returns Result.failure(RuntimeException("Network error"))
+        coEvery { mockEcpClient.sendKey("192.168.1.100", "Left", any()) } returns Result.failure(RuntimeException("Network error"))
 
         val states = navigator.executeAdTrackingMacro("192.168.1.100").toList()
 
@@ -35,7 +35,7 @@ class RokuPrivacyNavigatorTest {
         assertTrue(lastState is NavigationProgressState.Error)
         val errorState = lastState as NavigationProgressState.Error
         assertEquals("Limit Ad Tracking Macro", errorState.macroName)
-        assertTrue(errorState.message.contains("Failed to send key Up"))
+        assertTrue(errorState.message.contains("Failed to send key Left"))
     }
 
     @Test
