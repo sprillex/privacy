@@ -12,6 +12,7 @@
         android:usesPermissionFlags="neverForLocation" />
 
     <application
+        android:name=".PrivacyApplication"
         android:allowBackup="true"
         android:label="Privacy Sentinel"
         android:supportsRtl="true"
