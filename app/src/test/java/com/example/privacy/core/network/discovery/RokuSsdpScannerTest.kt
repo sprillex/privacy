@@ -65,4 +65,21 @@ class RokuSsdpScannerTest {
         assertNotNull(device)
         assertEquals("usn:192.168.1.100", device?.usn)
     }
+
+    @Test
+    fun parseSsdpResponse_dialSt_parsesCorrectly() {
+        val rawResponse = """
+            HTTP/1.1 200 OK
+            ST: urn:dial-multiscreen-org:service:dial:1
+            Location: http://192.168.1.72:8060/
+            USN: uuid:roku:ecp:dial123
+        """.trimIndent()
+
+        val device = RokuSsdpScanner.parseSsdpResponse(rawResponse)
+
+        assertNotNull(device)
+        assertEquals("192.168.1.72", device?.ipAddress)
+        assertEquals(8060, device?.port)
+        assertEquals("uuid:roku:ecp:dial123", device?.usn)
+    }
 }

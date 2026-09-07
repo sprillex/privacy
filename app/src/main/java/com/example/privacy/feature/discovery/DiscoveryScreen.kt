@@ -9,16 +9,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.TvOff
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.privacy.core.database.RokuDeviceWithChecks
 
@@ -29,6 +29,8 @@ fun DiscoveryScreen(
     onDeviceClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showAddByIpDialog by remember { mutableStateOf(false) }
+    var ipInputText by remember { mutableStateOf("") }
 
     val permissionsToRequest = mutableListOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
@@ -49,11 +51,64 @@ fun DiscoveryScreen(
         permissionLauncher.launch(permissionsToRequest)
     }
 
+    if (showAddByIpDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddByIpDialog = false },
+            title = { Text("Add Roku Device by IP") },
+            text = {
+                Column {
+                    Text(
+                        text = "Enter the IP address of your Roku device (e.g., 192.168.1.72):",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = ipInputText,
+                        onValueChange = { ipInputText = it },
+                        label = { Text("IP Address") },
+                        placeholder = { Text("192.168.1.72") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val ip = ipInputText.trim()
+                        if (ip.isNotBlank()) {
+                            showAddByIpDialog = false
+                            viewModel.addDeviceByIp(ip) { deviceId ->
+                                onDeviceClick(deviceId)
+                            }
+                        }
+                    },
+                    enabled = ipInputText.isNotBlank()
+                ) {
+                    Text("Connect")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddByIpDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Smart TV Privacy Sentinel") },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            ipInputText = ""
+                            showAddByIpDialog = true
+                        }
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add by IP")
+                    }
                     IconButton(
                         onClick = { permissionLauncher.launch(permissionsToRequest) },
                         enabled = !uiState.isScanning
@@ -86,7 +141,60 @@ fun DiscoveryScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            if (uiState.discoveredDevices.isEmpty() && !uiState.isScanning) {
+            if (!uiState.isWifiConnected) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WifiOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Wi-Fi disconnected. Connect to the same Wi-Fi network as your TV to scan",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = { permissionLauncher.launch(permissionsToRequest) }
+                                ) {
+                                    Text("Retry")
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        ipInputText = ""
+                                        showAddByIpDialog = true
+                                    }
+                                ) {
+                                    Text("Add by IP")
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (uiState.discoveredDevices.isEmpty() && !uiState.isScanning) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -96,9 +204,19 @@ fun DiscoveryScreen(
                             text = "No Roku devices found on Wi-Fi.",
                             style = MaterialTheme.typography.bodyLarge
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { permissionLauncher.launch(permissionsToRequest) }) {
-                            Text("Start Discovery")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(onClick = { permissionLauncher.launch(permissionsToRequest) }) {
+                                Text("Start Discovery")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    ipInputText = ""
+                                    showAddByIpDialog = true
+                                }
+                            ) {
+                                Text("Add by IP")
+                            }
                         }
                     }
                 }

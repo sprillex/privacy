@@ -12,9 +12,11 @@
         android:usesPermissionFlags="neverForLocation" />
 
     <application
+        android:name=".PrivacyApplication"
         android:allowBackup="true"
         android:label="Privacy Sentinel"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:name=".MainActivity"

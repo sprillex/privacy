@@ -40,6 +40,14 @@ class RokuSsdpScanner(
                     "ST: roku:ecp\r\n" +
                     "\r\n"
 
+        const val MSEARCH_DIAL_ST =
+            "M-SEARCH * HTTP/1.1\r\n" +
+                    "HOST: 239.255.255.250:1900\r\n" +
+                    "MAN: \"ssdp:discover\"\r\n" +
+                    "MX: 3\r\n" +
+                    "ST: urn:dial-multiscreen-org:service:dial:1\r\n" +
+                    "\r\n"
+
         const val MSEARCH_ALL_ST =
             "M-SEARCH * HTTP/1.1\r\n" +
                     "HOST: 239.255.255.250:1900\r\n" +
@@ -57,22 +65,21 @@ class RokuSsdpScanner(
             for (line in lines) {
                 val trimmed = line.trim()
                 val lowerCaseLine = trimmed.lowercase()
-                when {
-                    lowerCaseLine.startsWith("location:") -> {
-                        location = trimmed.substring("location:".length).trim()
-                    }
-                    lowerCaseLine.startsWith("usn:") -> {
-                        usn = trimmed.substring("usn:".length).trim()
-                    }
-                    lowerCaseLine.startsWith("st:") -> {
-                        val st = trimmed.substring("st:".length).trim()
-                        if (st.lowercase().contains("roku")) {
-                            isRoku = true
-                        }
-                    }
-                    lowerCaseLine.contains("roku") -> {
+
+                if (lowerCaseLine.startsWith("location:")) {
+                    location = trimmed.substring("location:".length).trim()
+                }
+                if (lowerCaseLine.startsWith("usn:")) {
+                    usn = trimmed.substring("usn:".length).trim()
+                }
+                if (lowerCaseLine.startsWith("st:")) {
+                    val st = trimmed.substring("st:".length).trim().lowercase()
+                    if (st.contains("roku") || st.contains("dial")) {
                         isRoku = true
                     }
+                }
+                if (lowerCaseLine.contains("roku")) {
+                    isRoku = true
                 }
             }
 
@@ -87,9 +94,8 @@ class RokuSsdpScanner(
             val ipAddress = uri.host ?: return null
             val port = if (uri.port != -1) uri.port else 8060
 
-            // If USN or location indicates Roku, or ST indicates Roku
             val effectiveUsn = usn ?: "usn:$ipAddress"
-            if (!isRoku && !effectiveUsn.lowercase().contains("roku") && !location.lowercase().contains("8060")) {
+            if (!isRoku && !effectiveUsn.lowercase().contains("roku") && !location.lowercase().contains("8060") && uri.port != 8060) {
                 return null
             }
 
@@ -122,13 +128,16 @@ class RokuSsdpScanner(
 
             val ssdpGroup = InetAddress.getByName(SSDP_MULTICAST_ADDRESS)
             val packetRoku = MSEARCH_ROKU_ST.toByteArray(Charsets.UTF_8)
+            val packetDial = MSEARCH_DIAL_ST.toByteArray(Charsets.UTF_8)
             val packetAll = MSEARCH_ALL_ST.toByteArray(Charsets.UTF_8)
 
             val sendPacketRoku = DatagramPacket(packetRoku, packetRoku.size, ssdpGroup, SSDP_PORT)
+            val sendPacketDial = DatagramPacket(packetDial, packetDial.size, ssdpGroup, SSDP_PORT)
             val sendPacketAll = DatagramPacket(packetAll, packetAll.size, ssdpGroup, SSDP_PORT)
 
             // Send initial probes
             socketImpl.send(sendPacketRoku)
+            socketImpl.send(sendPacketDial)
             socketImpl.send(sendPacketAll)
 
             val startTime = System.currentTimeMillis()
@@ -148,6 +157,7 @@ class RokuSsdpScanner(
                     if ((System.currentTimeMillis() - startTime) < scanTimeoutMs) {
                         try {
                             socketImpl.send(sendPacketRoku)
+                            socketImpl.send(sendPacketDial)
                             socketImpl.send(sendPacketAll)
                         } catch (_: Exception) {}
                     }
