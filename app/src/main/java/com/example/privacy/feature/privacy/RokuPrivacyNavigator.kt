@@ -26,10 +26,9 @@ class RokuPrivacyNavigator(
             "Scrolling to Privacy section" to "Up",
             "Entering Privacy" to "Right",
             "Entering Advertising" to "Right",
-            "Navigating to option" to "Down",
-            "Selecting option" to "Down",
-            "Toggling Advertising Personalization" to "Select",
-            "Confirming selection" to "Select"
+            "Navigating to Reset Advertising ID" to "Down",
+            "Selecting Reset Advertising ID" to "Select",
+            "Confirming Reset Advertising ID" to "Select"
         )
         val totalSteps = steps.size
 
@@ -47,7 +46,7 @@ class RokuPrivacyNavigator(
             }
 
             if (key == "Home") {
-                delay(1000)
+                delay(2000)
             } else {
                 delay(500)
             }
@@ -65,13 +64,18 @@ class RokuPrivacyNavigator(
 
         val steps = listOf(
             "Sending Home key" to "Home",
-            "Focusing side menu (Left)" to "Left",
-            "Opening Settings (Up)" to "Up",
-            "Selecting Settings" to "Select",
-            "Scrolling to Privacy" to "Down",
+            "Focusing side menu" to "Left",
+            "Navigating to Settings" to "Up",
+            "Entering Settings" to "Right",
+            "Navigating to Privacy" to "Up",
+            "Scrolling to Privacy section" to "Up",
             "Entering Privacy" to "Right",
-            "Navigating to Smart TV experience" to "Down",
-            "Entering Smart TV experience" to "Right"
+            "Scrolling down to Smart TV experience" to "Down",
+            "Selecting Smart TV experience option" to "Down",
+            "Entering Smart TV experience" to "Right",
+            "Selecting ACR setting" to "Select",
+            "Navigating down" to "Down",
+            "Confirming ACR setting" to "Select"
         )
         val totalSteps = steps.size
 
@@ -89,7 +93,7 @@ class RokuPrivacyNavigator(
             }
 
             if (key == "Home") {
-                delay(1000)
+                delay(2000)
             } else {
                 delay(500)
             }
