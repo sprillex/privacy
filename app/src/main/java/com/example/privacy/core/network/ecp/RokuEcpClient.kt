@@ -17,8 +17,13 @@ data class RokuDeviceInfo(
     val isTv: Boolean,
     val softwareVersion: String,
     val serialNumber: String = "",
-    val udn: String = ""
-)
+    val udn: String = "",
+    val ecpSettingControl: String = "permissive"
+) {
+    val isLimitedMode: Boolean
+        get() = ecpSettingControl.equals("limited", ignoreCase = true) ||
+                ecpSettingControl.equals("disabled", ignoreCase = true)
+}
 
 class RokuEcpClient(
     private val okHttpClient: OkHttpClient = createDefaultClient()
@@ -80,6 +85,7 @@ class RokuEcpClient(
             val softwareVersion = getTagValue("software-version")
             val serialNumber = getTagValue("serial-number")
             val udn = getTagValue("udn")
+            val ecpSettingControl = getTagValue("ecp-setting-control")
 
             val isTv = isTvStr.equals("true", ignoreCase = true)
             val finalName = userDeviceName.ifBlank { friendlyDeviceName.ifBlank { "Roku Device" } }
@@ -91,7 +97,8 @@ class RokuEcpClient(
                 isTv = isTv,
                 softwareVersion = softwareVersion,
                 serialNumber = serialNumber,
-                udn = udn
+                udn = udn,
+                ecpSettingControl = ecpSettingControl.ifBlank { "permissive" }
             )
         }
     }
@@ -99,21 +106,9 @@ class RokuEcpClient(
     suspend fun getDeviceInfo(ipAddress: String, port: Int = 8060): Result<RokuDeviceInfo> = withContext(Dispatchers.IO) {
         val cleanIp = ipAddress.removePrefix("http://").removePrefix("https://").trim().trimEnd('/')
         runCatching {
-            val primaryUrl = "http://$cleanIp:$port/query/device-info"
-            val request = Request.Builder().url(primaryUrl).get().build()
-            try {
-                okHttpClient.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        val bodyString = response.body?.string() ?: ""
-                        return@runCatching parseDeviceInfoXml(bodyString)
-                    }
-                }
-            } catch (_: Exception) {}
-
-            val fallbackPort = if (port == 8060) 8061 else port
-            val fallbackUrl = "https://$cleanIp:$fallbackPort/query/device-info"
-            val fallbackRequest = Request.Builder().url(fallbackUrl).get().build()
-            okHttpClient.newCall(fallbackRequest).execute().use { response ->
+            val url = "http://$cleanIp:$port/query/device-info"
+            val request = Request.Builder().url(url).get().build()
+            okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     throw IllegalStateException("HTTP ${response.code} fetching device info")
                 }
@@ -126,25 +121,16 @@ class RokuEcpClient(
     suspend fun sendKey(ipAddress: String, key: String, port: Int = 8060): Result<Boolean> = withContext(Dispatchers.IO) {
         val cleanIp = ipAddress.removePrefix("http://").removePrefix("https://").trim().trimEnd('/')
         runCatching {
-            val primaryUrl = "http://$cleanIp:$port/keypress/$key"
+            val url = "http://$cleanIp:$port/keypress/$key"
             val request = Request.Builder()
-                .url(primaryUrl)
+                .url(url)
                 .post("".toRequestBody(null))
                 .build()
-            try {
-                okHttpClient.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) return@runCatching true
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IllegalStateException("HTTP ${response.code} sending key $key")
                 }
-            } catch (_: Exception) {}
-
-            val fallbackPort = if (port == 8060) 8061 else port
-            val fallbackUrl = "https://$cleanIp:$fallbackPort/keypress/$key"
-            val fallbackRequest = Request.Builder()
-                .url(fallbackUrl)
-                .post("".toRequestBody(null))
-                .build()
-            okHttpClient.newCall(fallbackRequest).execute().use { response ->
-                response.isSuccessful
+                true
             }
         }
     }

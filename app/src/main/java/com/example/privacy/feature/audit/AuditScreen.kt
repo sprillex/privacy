@@ -70,6 +70,13 @@ fun AuditScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                if (uiState.isLimitedMode) {
+                    LimitedModeWalkthroughCard(
+                        isChecking = uiState.isCheckingLimitedMode,
+                        onCheckAgainClick = { viewModel.checkLimitedMode() }
+                    )
+                }
+
                 // Privacy Score Card
                 PrivacyScoreCard(deviceWithChecks.checks)
 
@@ -149,6 +156,109 @@ fun AuditScreen(
 
                 // Mini Remote Controls
                 MiniRemoteCard(onSendKey = { key -> viewModel.sendRemoteKey(key) })
+            }
+        }
+    }
+}
+
+@Composable
+fun LimitedModeWalkthroughCard(
+    isChecking: Boolean,
+    onCheckAgainClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Limited Control Mode Enabled",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "External mobile app control is currently restricted on this Roku TV. Follow these steps on your TV to allow control:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val steps = listOf(
+                "Pick up the physical Roku TV remote.",
+                "Press the Home button and navigate to Settings > System.",
+                "Select Advanced system settings > Control by mobile apps (or Network access).",
+                "Change the setting from Limited (or Disabled) to Permissive (or Enabled)."
+            )
+
+            steps.forEachIndexed { index, step ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.onError,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "${index + 1}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = step,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onCheckAgainClick,
+                enabled = !isChecking,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                if (isChecking) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onError,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Checking...")
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Check Again")
+                }
             }
         }
     }

@@ -53,4 +53,52 @@ class RokuEcpClientTest {
         assertFalse(info.isTv)
         assertEquals("13.0.0", info.softwareVersion)
     }
+
+    @Test
+    fun parseDeviceInfoXml_limitedEcpSetting_isLimitedModeTrue() {
+        val xml = """
+            <?xml version="1.0" encoding="UTF-8" ?>
+            <device-info>
+                <friendly-device-name>TCL Roku TV</friendly-device-name>
+                <ecp-setting-control>limited</ecp-setting-control>
+            </device-info>
+        """.trimIndent()
+
+        val info = RokuEcpClient.parseDeviceInfoXml(xml)
+
+        assertEquals("limited", info.ecpSettingControl)
+        assertTrue(info.isLimitedMode)
+    }
+
+    @Test
+    fun parseDeviceInfoXml_disabledEcpSetting_isLimitedModeTrue() {
+        val xml = """
+            <?xml version="1.0" encoding="UTF-8" ?>
+            <device-info>
+                <friendly-device-name>Hisense Roku TV</friendly-device-name>
+                <ecp-setting-control>disabled</ecp-setting-control>
+            </device-info>
+        """.trimIndent()
+
+        val info = RokuEcpClient.parseDeviceInfoXml(xml)
+
+        assertEquals("disabled", info.ecpSettingControl)
+        assertTrue(info.isLimitedMode)
+    }
+
+    @Test
+    fun parseDeviceInfoXml_permissiveEcpSetting_isLimitedModeFalse() {
+        val xml = """
+            <?xml version="1.0" encoding="UTF-8" ?>
+            <device-info>
+                <friendly-device-name>onn. Roku TV</friendly-device-name>
+                <ecp-setting-control>permissive</ecp-setting-control>
+            </device-info>
+        """.trimIndent()
+
+        val info = RokuEcpClient.parseDeviceInfoXml(xml)
+
+        assertEquals("permissive", info.ecpSettingControl)
+        assertFalse(info.isLimitedMode)
+    }
 }
